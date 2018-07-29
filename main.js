@@ -1,8 +1,9 @@
-const CANVAS_WIDTH = 512;
-const CANVAS_HEIGHT = 350;
+const CANVAS_WIDTH = 256;
+const CANVAS_HEIGHT = 256;
 const canvas = document.getElementById('canvas');
 canvas.width = CANVAS_WIDTH;
 canvas.height = CANVAS_HEIGHT;
+const context = canvas.getContext('2d');
 
 // mandel params
 const width = canvas.clientWidth;
@@ -11,11 +12,31 @@ var zoom = 1;
 var moveX = 0, moveY = 0;
 
 var needsUpdate = true; // true if the params have changed since last plot
+var working = false; // true if there's a worker processing a request
 
-// draw the first time after webasm loaded
-Module.addOnPostRun(() => {
-    animate();
-});
+// web workers to calculate the mandelbrot
+var worker = initWorker();
+
+function initWorker() {
+    var webworker = new Worker("worker.js");
+    webworker.onerror = function (evt) {
+        console.log(`Error from Web Worker: ${evt.message}`);
+    }
+    webworker.onmessage = function (evt) {
+        // web worker is ready!
+        if(evt.data === true) {
+            animate();
+        } 
+        // draw on canvas
+        else {            
+            const imageData = new ImageData(new Uint8ClampedArray(evt.data), width, height);            
+            context.putImageData(imageData, 0, 0);
+            working = false;
+        }
+    }
+
+    return webworker;
+}
 
 function animate() {
     requestAnimationFrame(animate);
@@ -30,17 +51,19 @@ function drawMandel() {
     if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
         canvas.height = height;
-    }            
-
-    // console.time('mandelbrot');
-    const mandelbrot = Module.mandelbrot(width, height, zoom, moveX, moveY);
-    // console.timeEnd('mandelbrot');
+    }
     
-    // console.time('canvas');
-    const imageData = new ImageData(new Uint8ClampedArray(mandelbrot), width, height);
-    const context = canvas.getContext('2d');
-    context.putImageData(imageData, 0, 0);
-    // console.timeEnd('canvas');            
+    worker.postMessage(
+        {
+            width,
+            height,
+            zoom,
+            moveX,
+            moveY
+        }
+    );
+
+    working = true;          
 }
 
 window.addEventListener("mousewheel", MouseWheelHandler, false);
@@ -48,6 +71,8 @@ window.addEventListener("mousewheel", MouseWheelHandler, false);
 const DELTA_SCALE_FACTOR = 8;
 
 function MouseWheelHandler(e) {
+    if(working) { return; }
+
     var e = window.event || e;
     var oldZoom = zoom;
 
