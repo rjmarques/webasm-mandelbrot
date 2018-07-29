@@ -1,0 +1,24 @@
+html {
+	box-sizing: border-box;
+}
+
+*, *:before, *:after {
+	box-sizing: inherit;
+	background-repeat: no-repeat !important;
+	min-width: 0px;
+	min-height: 0px;
+}
+
+body {
+	background-color: black;
+	width: 100vw;
+	height: 100vh;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	align-items: center;
+}
+
+.canvas {
+	margin: auto;
+}

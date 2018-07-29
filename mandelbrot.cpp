@@ -96,7 +96,7 @@ val mandelbrot(int w, int h, double zoom, double moveX, double moveY) {
 			double newRe, newIm, oldRe, oldIm;
 			newRe = newIm = oldRe = oldIm = 0; 
 			
-			const int maxIterations = 360; // after how much iterations the function should stop. Chosen to make take up full HSV hue range.
+			const int maxIterations = 512;
 			int i;
 			for (i = 0; i < maxIterations; i++) {
 				oldRe = newRe;
@@ -109,9 +109,9 @@ val mandelbrot(int w, int h, double zoom, double moveX, double moveY) {
 			}
 
 			hsv hsvColor;
-			hsvColor.h = i;
+			hsvColor.h = i % 360;
 			hsvColor.s = 1; // fully saturated.
-			hsvColor.v = i < maxIterations;
+			hsvColor.v = (i < maxIterations);
 			rgb color = hsv2rgb(hsvColor);
 			
 			size_t bufferOffset = (x + y * w) * 4;
