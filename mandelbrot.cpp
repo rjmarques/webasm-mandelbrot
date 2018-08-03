@@ -77,19 +77,19 @@ static rgb hsv2rgb(hsv in) {
 uint8_t *buffer = nullptr;
 
 // Mandlebrot definition from http://lodev.org/cgtutor/juliamandelbrot.html
-val mandelbrot(int w, int h, double zoom, double moveX, double moveY) {
+val mandelbrot(int yStart, int yEnd, int w, int h, double zoom, double moveX, double moveY) {
 	if (buffer != nullptr) {
 		free(buffer);
 	}
 
 	// The image format that imageData expects is four unsigned bytes: red, green, blue, alpha
-	size_t bufferSize = w * h * 4;
+	size_t bufferSize = w * (yEnd-yStart) * 4;
 	buffer = (uint8_t *)malloc(bufferSize);
 	if (buffer == nullptr) {
 		return val::undefined();
 	}
 
-	for (int y = 0; y < h; y++) {
+	for (int y = yStart, rowCount = 0; y < yEnd; y++, rowCount++) {
 		for (int x = 0; x < w; x++) {
 			double pr = 1.5 * (x - w / 2) / (0.5 * zoom * w) + moveX;
 			double pi = (y - h / 2) / (0.5 * zoom * h) + moveY;
@@ -114,7 +114,7 @@ val mandelbrot(int w, int h, double zoom, double moveX, double moveY) {
 			hsvColor.v = (i < maxIterations);
 			rgb color = hsv2rgb(hsvColor);
 			
-			size_t bufferOffset = (x + y * w) * 4;
+			size_t bufferOffset = (x + rowCount * w) * 4;
 			buffer[bufferOffset + 0] = color.r * 255;
 			buffer[bufferOffset + 1] = color.g * 255;
 			buffer[bufferOffset + 2] = color.b * 255;

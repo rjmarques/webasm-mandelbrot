@@ -1,44 +1,65 @@
-const CANVAS_WIDTH = 256;
-const CANVAS_HEIGHT = 256;
+const CANVAS_WIDTH = 1024;
+const CANVAS_HEIGHT = 800;
 const canvas = document.getElementById('canvas');
 canvas.width = CANVAS_WIDTH;
 canvas.height = CANVAS_HEIGHT;
 const context = canvas.getContext('2d');
 
+// initial base values
+var ZOOM = 1;
+var MOVE_X = 0, MOVE_Y = 0;
+ 
 // mandel params
 const width = canvas.clientWidth;
 const height = canvas.clientHeight;
-var zoom = 1;
-var moveX = 0, moveY = 0;
+var zoom = ZOOM;
+var moveX = MOVE_X, moveY = MOVE_Y;
 
 var needsUpdate = true; // true if the params have changed since last plot
-var working = false; // true if there's a worker processing a request
+var activeWorkerCount = 0; // > 0 if there's a worker processing a request
 
 // web workers to calculate the mandelbrot
-var worker = initWorker();
+var workersReady = 0;
+var workers = [initWorker(), initWorker(), initWorker(), initWorker()];
+
+function reset() {
+    zoom = ZOOM;
+    moveX = MOVE_X;
+    moveY = MOVE_Y;
+    needsUpdate = true;
+}
 
 function initWorker() {
     var webworker = new Worker("worker.js");
+
     webworker.onerror = function (evt) {
         console.log(`Error from Web Worker: ${evt.message}`);
     }
-    webworker.onmessage = function (evt) {
+    webworker.onmessage = function (evt) {        
         // web worker is ready!
         if(evt.data === true) {
+            workersReady++;
             animate();
         } 
         // draw on canvas
-        else {            
-            const imageData = new ImageData(new Uint8ClampedArray(evt.data), width, height);            
-            context.putImageData(imageData, 0, 0);
-            working = false;
+        else {
+            drawMandelSection(evt.data.yStart, evt.data.yEnd, evt.data.mandelbrot);
         }
     }
 
     return webworker;
 }
 
+function drawMandelSection(yStart, yEnd, mandelbrot) {
+    const imageData = new ImageData(new Uint8ClampedArray(mandelbrot), width, yEnd - yStart); 
+    context.putImageData(imageData, 0, yStart);
+    activeWorkerCount--;
+}
+
 function animate() {
+    // workers are still starting up
+    if(workersReady < workers.length) { return; }
+
     requestAnimationFrame(animate);
 
     if(needsUpdate) {
@@ -52,18 +73,25 @@ function drawMandel() {
         canvas.width = width;
         canvas.height = height;
     }
-    
-    worker.postMessage(
-        {
-            width,
-            height,
-            zoom,
-            moveX,
-            moveY
-        }
-    );
 
-    working = true;          
+    const sectionHeight = height / workers.length;
+    let currHeight = 0;
+    workers.forEach((w, index) => {
+        w.postMessage(
+            {
+                yStart: currHeight,
+                yEnd: currHeight + sectionHeight,
+                width,
+                height,
+                zoom,
+                moveX,
+                moveY
+            }
+        );    
+
+        currHeight += sectionHeight;
+        activeWorkerCount++; 
+    });         
 }
 
 window.addEventListener("mousewheel", MouseWheelHandler, false);
@@ -71,7 +99,7 @@ window.addEventListener("mousewheel", MouseWheelHandler, false);
 const DELTA_SCALE_FACTOR = 8;
 
 function MouseWheelHandler(e) {
-    if(working) { return; }
+    if(activeWorkerCount) { return; }
 
     var e = window.event || e;
     var oldZoom = zoom;
