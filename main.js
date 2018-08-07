@@ -6,31 +6,54 @@ canvas.height = CANVAS_HEIGHT;
 const context = canvas.getContext('2d');
 
 // initial base values
-var ZOOM = 1;
-var MOVE_X = 0, MOVE_Y = 0;
+const ZOOM = 1;
+const MOVE_X = -0.5, MOVE_Y = 0;
+const MAX_ITERATIONS = 512;
+const NUMBER_WORKERS = 2;
  
 // mandel params
 const width = canvas.clientWidth;
 const height = canvas.clientHeight;
-var zoom = ZOOM;
-var moveX = MOVE_X, moveY = MOVE_Y;
+let zoom = ZOOM;
+let moveX = MOVE_X, moveY = MOVE_Y;
+let maxIterations = MAX_ITERATIONS;
+let numberWorkers = NUMBER_WORKERS;
 
-var needsUpdate = true; // true if the params have changed since last plot
-var activeWorkerCount = 0; // > 0 if there's a worker processing a request
+// mandelbrot orchestration
+let needsUpdate = true; // true if the params have changed since last plot
+let activeWorkerCount = 0; // > 0 if there's a worker processing a request
+let workers = []; // web workers to calculate the mandelbrot
+let workersReady = -1; // how many workers have reported for duty..sir!
 
-// web workers to calculate the mandelbrot
-var workersReady = 0;
-var workers = [initWorker(), initWorker(), initWorker(), initWorker()];
+// performance metrics
+let t0, t1;
 
-function reset() {
-    zoom = ZOOM;
-    moveX = MOVE_X;
-    moveY = MOVE_Y;
-    needsUpdate = true;
+function init() {
+    updateWorkerPool();
+    updateInputs();
+    animate();
+}
+init(); // for some reason it feels right to wrap initialization in a function... O.o
+
+/* MANDELBROT CALCULATION */
+
+function updateWorkerPool() {
+    const currNumberWorkers = workers.length;
+    workersReady = currNumberWorkers;
+
+    for (let i = currNumberWorkers; i < numberWorkers; i++) {
+        workers.push(initWorker());
+    }
+
+    for (let i = workers.length; i > numberWorkers; i--) {
+        const worker = workers.pop();
+        worker.terminate();
+        workersReady--;
+    }
 }
 
 function initWorker() {
-    var webworker = new Worker("worker.js");
+    const webworker = new Worker("worker.js");
 
     webworker.onerror = function (evt) {
         console.log(`Error from Web Worker: ${evt.message}`);
@@ -39,7 +62,6 @@ function initWorker() {
         // web worker is ready!
         if(evt.data === true) {
             workersReady++;
-            animate();
         } 
         // draw on canvas
         else {
@@ -53,14 +75,19 @@ function initWorker() {
 function drawMandelSection(yStart, yEnd, mandelbrot) {
     const imageData = new ImageData(new Uint8ClampedArray(mandelbrot), width, yEnd - yStart); 
     context.putImageData(imageData, 0, yStart);
+    
     activeWorkerCount--;
+    // all workers have finished
+    if(!activeWorkerCount) {
+        endTimer(); 
+    }
 }
 
 function animate() {
+    requestAnimationFrame(animate);
+
     // workers are still starting up
     if(workersReady < workers.length) { return; }
-
-    requestAnimationFrame(animate);
 
     if(needsUpdate) {
         drawMandel();
@@ -76,8 +103,9 @@ function drawMandel() {
 
     const sectionHeight = height / workers.length;
     let currHeight = 0;
-    workers.forEach((w, index) => {
-        w.postMessage(
+    for (let i = 0; i < numberWorkers; i++) {
+        const worker = workers[i];
+        worker.postMessage(
             {
                 yStart: currHeight,
                 yEnd: currHeight + sectionHeight,
@@ -85,15 +113,64 @@ function drawMandel() {
                 height,
                 zoom,
                 moveX,
-                moveY
+                moveY,
+                maxIterations
             }
         );    
 
         currHeight += sectionHeight;
         activeWorkerCount++; 
-    });         
+    }
+    startTimer();
 }
 
+/* PERFORMANCE */
+function startTimer() {
+    t0 = performance.now();
+    t1 = undefined;
+}
+
+function endTimer() {
+    if(!t0) { throw Error(); }
+    t1 = performance.now();
+
+    const operationTime = t1 - t0;
+    updateOperationTime(operationTime);
+}
+
+/* INPUT HANDLERS*/
+function updateInputs() {
+    document.getElementById("zoom").value = zoom;
+    document.getElementById("movex").value = moveX;
+    document.getElementById("movey").value = moveY;
+    document.getElementById("maxiterations").value = maxIterations;
+    document.getElementById("workers").value = numberWorkers;
+}
+
+function reset() {
+    zoom = ZOOM;
+    moveX = MOVE_X;
+    moveY = MOVE_Y;
+    maxIterations = MAX_ITERATIONS;
+    updateInputs();
+
+    needsUpdate = true;
+}
+
+function draw() { needsUpdate = true; }
+function updateZoom(obj) { zoom = Number(obj.value); }
+function updateMoveX(obj) { moveX = Number(obj.value); }
+function updateMoveY(obj) { moveY = Number(obj.value); }
+function updateMaxIterations(obj) { maxIterations = Number(obj.value); }
+function updateOperationTime(operationTime) { 
+    document.getElementById("operationtime").textContent = Math.round(operationTime) / 1000 + " seconds";
+}
+function updateNumWorkers(obj) {
+    numberWorkers = obj.value;
+    updateWorkerPool();
+}
+
+/* MOUSE CONTROLS */
 window.addEventListener("mousewheel", MouseWheelHandler, false);
 
 const DELTA_SCALE_FACTOR = 8;
@@ -101,11 +178,11 @@ const DELTA_SCALE_FACTOR = 8;
 function MouseWheelHandler(e) {
     if(activeWorkerCount) { return; }
 
-    var e = window.event || e;
-    var oldZoom = zoom;
+    e = window.event || e;
+    const oldZoom = zoom;
 
     // new zoom
-    var zoomDelta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+    const zoomDelta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
     zoom = Math.max(1, zoom * (1 + zoomDelta / 10));
 
     if(zoom === oldZoom) {
@@ -113,19 +190,21 @@ function MouseWheelHandler(e) {
     }
 
     // new moveX and moveY
-    var deltas = getDeltas(e.x, e.y);
+    let deltas = getDeltas(e.x, e.y);
     moveX += ((deltas.x/DELTA_SCALE_FACTOR) / zoom) * zoomDelta;
     moveY += ((deltas.y/DELTA_SCALE_FACTOR) / zoom) * zoomDelta;
+
+    updateInputs();
 
     needsUpdate = true;
 }
 
 function getDeltas(xPos, yPos) {
-    var canvasRect = canvas.getBoundingClientRect(); 
-    var canvasLowerX = canvasRect.left;
-    var canvasLowerY = canvasRect.top;
-    var canvasUpperX = canvasRect.right;
-    var canvasUpperY = canvasRect.bottom;
+    const canvasRect = canvas.getBoundingClientRect(); 
+    const canvasLowerX = canvasRect.left;
+    const canvasLowerY = canvasRect.top;
+    const canvasUpperX = canvasRect.right;
+    const canvasUpperY = canvasRect.bottom;
 
     // transform coordinates to canvas positions
     xPos = Math.min(canvasUpperX, Math.max(canvasLowerX, xPos));

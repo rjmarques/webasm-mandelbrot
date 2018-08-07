@@ -77,7 +77,7 @@ static rgb hsv2rgb(hsv in) {
 uint8_t *buffer = nullptr;
 
 // Mandlebrot definition from http://lodev.org/cgtutor/juliamandelbrot.html
-val mandelbrot(int yStart, int yEnd, int w, int h, double zoom, double moveX, double moveY) {
+val mandelbrot(int yStart, int yEnd, int w, int h, double zoom, double moveX, double moveY, int maxIterations) {
 	if (buffer != nullptr) {
 		free(buffer);
 	}
@@ -96,7 +96,6 @@ val mandelbrot(int yStart, int yEnd, int w, int h, double zoom, double moveX, do
 			double newRe, newIm, oldRe, oldIm;
 			newRe = newIm = oldRe = oldIm = 0; 
 			
-			const int maxIterations = 512;
 			int i;
 			for (i = 0; i < maxIterations; i++) {
 				oldRe = newRe;
