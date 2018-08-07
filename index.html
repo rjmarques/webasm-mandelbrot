@@ -43,13 +43,13 @@
                     <div class="input-row">
                         <p>
                             <label class="label" for="movey">Max Iterations</label>
-                            <input type="number" class="value" id="maxiterations" name="maxiterations" onchange="updateMaxIterations(this)" max="8192"></input>
+                            <input type="number" class="value" id="maxiterations" name="maxiterations" onchange="updateMaxIterations(this)" min="32" max="8192"></input>
                         </p>
                     </div>
                     <div class="input-row">
                         <p>
                             <label class="label" for="workers"> Worker Threads</label>
-                            <input type="number" class="value" id="workers" name="workers" onchange="updateNumWorkers(this)" max="16"></input>
+                            <input type="number" class="value" id="workers" name="workers" onchange="updateNumWorkers(this)" min="1" max="16"></input>
                         </p>
                     </div>
                     <div class="input-row">
