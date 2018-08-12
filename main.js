@@ -73,8 +73,12 @@ function initWorker() {
 }
 
 function drawMandelSection(yStart, yEnd, mandelbrot) {
-    const imageData = new ImageData(new Uint8ClampedArray(mandelbrot), width, yEnd - yStart); 
-    context.putImageData(imageData, 0, yStart);
+    try {    
+        const imageData = new ImageData(new Uint8ClampedArray(mandelbrot), width, yEnd - yStart); 
+        context.putImageData(imageData, 0, yStart);
+    } catch(err) {
+        console.log(err);
+    }
     
     activeWorkerCount--;
     // all workers have finished
@@ -101,10 +105,18 @@ function drawMandel() {
         canvas.height = height;
     }
 
-    const sectionHeight = height / workers.length;
+    // workers that process the same amount of rows
+    let sectionHeight = Math.round(height / workers.length);
     let currHeight = 0;
-    for (let i = 0; i < numberWorkers; i++) {
+    for (let i = 0; i < workers.length; i++) {
         const worker = workers[i];
+
+        // last worker does a few more rows if need be
+        // this if for cases where height is not divisible by workers.length
+        if(i == workers.length-1) {
+            sectionHeight = height - currHeight;
+        }
+
         worker.postMessage(
             {
                 yStart: currHeight,
@@ -116,11 +128,16 @@ function drawMandel() {
                 moveY,
                 maxIterations
             }
-        );    
+        );
 
         currHeight += sectionHeight;
         activeWorkerCount++; 
     }
+
+    if(height != currHeight) {
+        throw "Some pixels were not calculated!";
+    }
+
     startTimer();
 }
 
@@ -171,7 +188,7 @@ function updateNumWorkers(obj) {
 }
 
 /* MOUSE CONTROLS */
-window.addEventListener("mousewheel", MouseWheelHandler, false);
+window.addEventListener("mousewheel", MouseWheelHandler);
 
 const DELTA_SCALE_FACTOR = 8;
 
