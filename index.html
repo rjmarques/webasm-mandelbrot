@@ -24,6 +24,18 @@
                     </div>
                     <div class="input-row">
                         <p>
+                            <label class="label" for="width">Width</label>
+                            <input type="number" class="value" id="width" name="width" min="0" onchange="updateWidth(this)"></input>
+                        </p>
+                    </div>
+                    <div class="input-row">
+                        <p>
+                            <label class="label" for="height">Height</label>
+                            <input type="number" class="value" id="height" name="height" min="0" onchange="updateHeight(this)"></input>
+                        </p>
+                    </div>
+                    <div class="input-row">
+                        <p>
                             <label class="label" for="zoom">Zoom</label>
                             <input type="number" class="value" id="zoom" name="zoom" min="0" onchange="updateZoom(this)"></input>
                         </p>
@@ -70,7 +82,7 @@
             </div>
         </section>
         <section id="canvas-placeholder">
-                <canvas id="canvas" class="canvas"></canvas>
+            <canvas id="canvas" class="canvas"></canvas>
         </section>        
     </div>
     <script src="main.js"></script>

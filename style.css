@@ -18,6 +18,7 @@ body {
 	font-family: sans-serif;
 	font-size: 14px;
 	margin: 0;
+	overflow: hidden;
 	padding: 0;
 	transition: background-color 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), color 0.09s linear, opacity 0.18s linear;
 	width: 100vw;
@@ -140,7 +141,5 @@ input {
 	border: 1px solid #222222;
 	flex: 0 0 auto;
 	margin: auto;
-}
-
-.canvas {
+	overflow: hidden;
 }

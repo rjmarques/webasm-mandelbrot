@@ -1,8 +1,13 @@
-const CANVAS_WIDTH = 1024;
-const CANVAS_HEIGHT = 800;
+const canvasPlaceholder = document.getElementById('canvas-placeholder');
+// limits defined by the window
+const maxWidth = getElementWidth(canvasPlaceholder);
+const maxHeight = getElementHeight(canvasPlaceholder);
+
+const CANVAS_WIDTH = Math.min(maxWidth, 1024);
+const CANVAS_HEIGHT = Math.min(maxHeight, 800);
 const canvas = document.getElementById('canvas');
-canvas.width = CANVAS_WIDTH;
-canvas.height = CANVAS_HEIGHT;
+canvas.width = Math.min(maxWidth, CANVAS_WIDTH);
+canvas.height = Math.min(maxHeight, CANVAS_HEIGHT);
 const context = canvas.getContext('2d');
 
 // initial base values
@@ -12,8 +17,8 @@ const MAX_ITERATIONS = 512;
 const NUMBER_WORKERS = 2;
  
 // mandel params
-const width = canvas.clientWidth;
-const height = canvas.clientHeight;
+let width = canvas.clientWidth;
+let height = canvas.clientHeight;
 let zoom = ZOOM;
 let moveX = MOVE_X, moveY = MOVE_Y;
 let maxIterations = MAX_ITERATIONS;
@@ -104,7 +109,7 @@ function drawMandel() {
         canvas.width = width;
         canvas.height = height;
     }
-
+    
     // workers that process the same amount of rows
     let sectionHeight = Math.round(height / workers.length);
     let currHeight = 0;
@@ -157,6 +162,8 @@ function endTimer() {
 
 /* INPUT HANDLERS*/
 function updateInputs() {
+    document.getElementById("width").value = width;
+    document.getElementById("height").value = height;
     document.getElementById("zoom").value = zoom;
     document.getElementById("movex").value = moveX;
     document.getElementById("movey").value = moveY;
@@ -165,6 +172,8 @@ function updateInputs() {
 }
 
 function reset() {
+    width = CANVAS_WIDTH;
+    height = CANVAS_HEIGHT;
     zoom = ZOOM;
     moveX = MOVE_X;
     moveY = MOVE_Y;
@@ -175,6 +184,14 @@ function reset() {
 }
 
 function draw() { needsUpdate = true; }
+function updateWidth(obj) {
+    width = Math.min(maxWidth, Number(obj.value));
+    updateInputs();
+}
+function updateHeight(obj) {     
+    height = Math.min(maxHeight, Number(obj.value));
+    updateInputs();
+}
 function updateZoom(obj) { zoom = Number(obj.value); }
 function updateMoveX(obj) { moveX = Number(obj.value); }
 function updateMoveY(obj) { moveY = Number(obj.value); }
@@ -187,12 +204,24 @@ function updateNumWorkers(obj) {
     updateWorkerPool();
 }
 
+function getElementWidth(elem) {
+    const style = getComputedStyle(elem, null);
+    const marginLeft = parseInt(style.marginLeft) || 0;
+    const marginRight = parseInt(style.marginRight) || 0;
+    return marginLeft + elem.clientWidth + marginRight;
+}
+
+function getElementHeight(elem) {
+    const style = getComputedStyle(elem, null);
+    const marginTop = parseInt(style.marginTop) || 0;
+    const marginBottom = parseInt(style.marginBottom) || 0;
+    return marginTop + elem.clientHeight + marginBottom;
+}
+
 /* MOUSE CONTROLS */
-window.addEventListener("mousewheel", MouseWheelHandler);
 
 const DELTA_SCALE_FACTOR = 8;
-
-function MouseWheelHandler(e) {
+window.addEventListener("mousewheel", (e) => {
     if(activeWorkerCount) { return; }
 
     e = window.event || e;
@@ -214,7 +243,7 @@ function MouseWheelHandler(e) {
     updateInputs();
 
     needsUpdate = true;
-}
+});
 
 function getDeltas(xPos, yPos) {
     const canvasRect = canvas.getBoundingClientRect(); 
