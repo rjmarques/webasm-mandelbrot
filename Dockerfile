@@ -7,3 +7,4 @@ RUN make mandelbrot.js
 
 FROM scratch as binaries
 COPY --link --from=build /src/mandelbrot.js mandelbrot.js
+COPY --link --from=build /src/mandelbrot.wasm mandelbrot.wasm

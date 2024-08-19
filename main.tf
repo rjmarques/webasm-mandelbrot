@@ -9,7 +9,7 @@ terraform {
 
 # List all files in the static directory
 locals {
-  static_files = fileset("${path.module}/", "*.{css,js,html}")
+  static_files = fileset("${path.module}/", "*.{css,wasm,js,html}")
 }
 
 output "target_name" {
