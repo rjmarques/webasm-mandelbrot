@@ -13,11 +13,11 @@ locals {
 }
 
 output "target_name" {
-  value = "solar"
+  value = "webasm"
 }
 
 output "build_path" {
-  value = "${path.module}/dist/"
+  value = "${path.module}/"
 }
 
 output "static_files" {
