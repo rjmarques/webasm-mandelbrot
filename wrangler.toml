@@ -1,0 +1,10 @@
+"$schema" = "./node_modules/wrangler/config-schema.json"
+
+name = "webasm-mandelbrot"
+compatibility_date = "2026-06-08"
+
+# Static-only Worker: Cloudflare serves files from ./dist directly.
+# No Worker script (`main`) or assets `binding` is needed because we
+# have no dynamic logic.
+[assets]
+directory = "./dist"
