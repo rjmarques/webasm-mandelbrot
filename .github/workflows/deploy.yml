@@ -27,9 +27,6 @@ jobs:
         tar -xf dist.tar
         rm dist.tar
 
-    - name: Install Wrangler
-      run: npm install -g wrangler@latest
-
     - name: Deploy to Cloudflare Workers
       uses: cloudflare/wrangler-action@v3
       with:
