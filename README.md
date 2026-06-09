@@ -1,11 +1,24 @@
-# Web Assembly Mandelbrot Viewer
+# WebAssembly Mandelbrot Viewer
 
-## Build steps
+A Mandelbrot explorer rendered via WebAssembly (C++ compiled with Emscripten)
+and a pool of Web Workers. Deployed as a static-asset
+[Cloudflare Worker](https://developers.cloudflare.com/workers/static-assets/).
 
-The build runs in a docker container for compatibility reasons (old dependencies). The artefacts are commited to GH for simplicity.
+## Build
+
+Docker handles the Emscripten toolchain; the `release` stage exports the
+assembled `dist/` as a tar:
 
 ```bash
-docker build -t rjmarques/webasm-mandelbrot . --output type=tar,dest=mandel.tar --target binaries
-
-tar -xf mandel.tar
+docker build -t webasm-mandelbrot . --output type=tar,dest=dist.tar --target release
+rm -rf dist && tar -xf dist.tar && rm dist.tar
 ```
+
+## Deploy
+
+Pushes to `master` run `.github/workflows/deploy.yml`, which builds `dist/`
+and runs `wrangler deploy`.
+
+## Credits
+
+UI based on [tilde.club/~david/m](http://www.tilde.club/~david/m).

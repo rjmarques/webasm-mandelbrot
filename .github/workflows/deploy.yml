@@ -1,0 +1,35 @@
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build static assets via Docker
+      # The WASM build needs Emscripten, so we run it inside the project's
+      # Dockerfile. The `release` stage exports the assembled dist/ as a
+      # tar (hand-written static files + emscripten-generated mandelbrot.js
+      # and mandelbrot.wasm).
+      run: |
+        docker build -t webasm-mandelbrot . --output type=tar,dest=dist.tar --target release
+        rm -rf dist
+        tar -xf dist.tar
+        rm dist.tar
+
+    - name: Deploy to Cloudflare Workers
+      uses: cloudflare/wrangler-action@v3
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        command: deploy
